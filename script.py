@@ -168,7 +168,7 @@ def main():
             total = data.get('total', 0)
             issues = data.get('issues', [])
             start_at += len(issues)
-            
+            print("Number of issues is:"+len(issues))
             for issue in issues:
                 key = issue.get('key', 'N/A')
                 fields = issue.get('fields', {})
