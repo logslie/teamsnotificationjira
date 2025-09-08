@@ -3,7 +3,7 @@ import time
 import json
 from datetime import datetime
 import requests
-import winsound
+#import winsound
 
 
 API_TOKEN = os.environ["JIRA_TOKEN"]
@@ -128,32 +128,6 @@ def send_to_teams(card: dict):
     r.raise_for_status()
 
 
-def local_alarm(message: str, duration_sec: int = 10):
-    """Alarma tipo despertador: reproduce un WAV del sistema en bucle durante X segundos
-       y muestra el mensaje en consola."""
-    print(message, flush=True)
-    # Intenta usar un WAV del sistema en bucle (Windows)
-    media_dir = os.path.join(os.environ.get('WINDIR', r'C:\Windows'), 'Media')
-    candidates = [
-        os.path.join(media_dir, 'Alarm01.wav'),
-        os.path.join(media_dir, 'Alarm02.wav'),
-        os.path.join(media_dir, 'Alarm03.wav'),
-        os.path.join(media_dir, 'Windows Notify Calendar.wav'),
-        os.path.join(media_dir, 'Windows Notify System Generic.wav'),
-    ]
-    wav = next((p for p in candidates if os.path.exists(p)), None)
-    if wav:
-        winsound.PlaySound(wav, winsound.SND_FILENAME | winsound.SND_ASYNC | winsound.SND_LOOP)
-        try:
-            time.sleep(duration_sec)
-        finally:
-            winsound.PlaySound(None, 0)
-    else:
-        end_time = time.time() + duration_sec
-        while time.time() < end_time:
-            winsound.Beep(1000, 250)
-            winsound.Beep(1400, 250)
-            time.sleep(0.10)
 
 
 def main():
@@ -222,7 +196,7 @@ def main():
                                 print(f"[ERROR] Envío a Teams falló ({key}): {te}")
                                 local_alarm(plain)
                         else:
-                            local_alarm(plain)
+                          #  local_alarm(plain)
 
                         alerts += 1
 
