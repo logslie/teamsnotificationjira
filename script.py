@@ -135,7 +135,6 @@ def main():
     # Guarda por issue: { key: {"updated": str, "priority": str, "last_comment": str} }
     seen = {}
 
-    while True:
         try:
             start_at = 0
             total = 1
@@ -188,15 +187,12 @@ def main():
                         # Prepara card/texto
                         card, plain = format_issue(issue, reason)
 
-                        if TEAMS_WEBHOOK_URL:
                             try:
                                 send_to_teams(card)
                                 print(f"[{datetime.now().isoformat(timespec='seconds')}] Aviso Teams: {key} — {reason}")
                             except Exception as te:
                                 print(f"[ERROR] Envío a Teams falló ({key}): {te}")
                                 local_alarm(plain)
-                        else:
-                          #  local_alarm(plain)
 
                         alerts += 1
 
