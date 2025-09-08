@@ -134,72 +134,72 @@ def main():
     print(f"[{datetime.now().isoformat(timespec='seconds')}] Monitor Jira (Highest/High/Medium/Low) cada {POLL_SECONDS}s")
     # Guarda por issue: { key: {"updated": str, "priority": str, "last_comment": str} }
     seen = {}
-
-        try:
-            start_at = 0
-            total = 1
-            alerts = 0
-
-            while start_at < total:
-                data = jira_search(start_at=start_at)
-                total = data.get('total', 0)
-                issues = data.get('issues', [])
-                start_at += len(issues)
-
-                for issue in issues:
-                    key = issue.get('key', 'N/A')
-                    fields = issue.get('fields', {})
-                    updated = fields.get('updated') or ''
-                    priority = (fields.get('priority') or {}).get('name') or ''
-                    prev = seen.get(key)
-
-                    reason = None
-                    last_comment_updated = None
-
-                    if prev is None:
-                        # Nuevo issue 
-                        # Miramos si tiene comentarios 
+    
+    try:
+        start_at = 0
+        total = 1
+        alerts = 0
+        
+        while start_at < total:
+            data = jira_search(start_at=start_at)
+            total = data.get('total', 0)
+            issues = data.get('issues', [])
+            start_at += len(issues)
+            
+            for issue in issues:
+                key = issue.get('key', 'N/A')
+                fields = issue.get('fields', {})
+                updated = fields.get('updated') or ''
+                priority = (fields.get('priority') or {}).get('name') or ''
+                prev = seen.get(key)
+                
+                reason = None
+                last_comment_updated = None
+                
+                if prev is None:
+                    # Nuevo issue 
+                    # Miramos si tiene comentarios 
+                    try:
+                        last_comment_updated = get_last_comment_updated(key)
+                    except Exception as ce:
+                        print(f"[WARN] No se pudo consultar comentarios de {key}: {ce}")
+                        last_comment_updated = ''
+                        reason = "nuevo"
+                else:
+                    # ¿Cambió la prioridad?
+                    if prev.get('priority') != priority:
+                        reason = f"cambio de prioridad ({prev.get('priority')} → {priority})"
+                        # ¿Cambió el 'updated'? si es así distinguimos comentario vs otros cambios
+                    elif prev.get('updated') != updated:
                         try:
                             last_comment_updated = get_last_comment_updated(key)
                         except Exception as ce:
                             print(f"[WARN] No se pudo consultar comentarios de {key}: {ce}")
-                            last_comment_updated = ''
-                        reason = "nuevo"
-                    else:
-                        # ¿Cambió la prioridad?
-                        if prev.get('priority') != priority:
-                            reason = f"cambio de prioridad ({prev.get('priority')} → {priority})"
-                        # ¿Cambió el 'updated'? si es así distinguimos comentario vs otros cambios
-                        elif prev.get('updated') != updated:
-                            try:
-                                last_comment_updated = get_last_comment_updated(key)
-                            except Exception as ce:
-                                print(f"[WARN] No se pudo consultar comentarios de {key}: {ce}")
-                                last_comment_updated = prev.get('last_comment', '')
-
+                            last_comment_updated = prev.get('last_comment', '')
+                            
                             if (last_comment_updated or '') != (prev.get('last_comment') or ''):
                                 reason = "nuevo comentario"
                             else:
                                 reason = "actualizado (otros cambios)"
 
                     # Si hay motivo, alerta y actualiza estado
-                    if reason:
-                        # Prepara card/texto
-                        card, plain = format_issue(issue, reason)
-
-                            try:
-                                send_to_teams(card)
-                                print(f"[{datetime.now().isoformat(timespec='seconds')}] Aviso Teams: {key} — {reason}")
-                            except Exception as te:
-                                print(f"[ERROR] Envío a Teams falló ({key}): {te}")
-                                local_alarm(plain)
-
+                if reason:
+                    # Prepara card/texto
+                    card, plain = format_issue(issue, reason)
+                    
+                    try:
+                        send_to_teams(card)
+                        print(f"[{datetime.now().isoformat(timespec='seconds')}] Aviso Teams: {key} — {reason}")
+                    except Exception as te:
+                        print(f"[ERROR] Envío a Teams falló ({key}): {te}")
+                        local_alarm(plain)
+                        
                         alerts += 1
-
-                    # Actualiza el registro de estado (incluso si no hubo motivo esta vez)
-                    if last_comment_updated is None:
-                        # Si no lo obtuvo, conserva el anterior
-                        last_comment_updated = (prev or {}).get('last_comment', '')
+                        
+                        # Actualiza el registro de estado (incluso si no hubo motivo esta vez)
+                if last_comment_updated is None:
+                    # Si no lo obtuvo, conserva el anterior
+                    last_comment_updated = (prev or {}).get('last_comment', '')
                     seen[key] = {
                         "updated": updated,
                         "priority": priority,
@@ -209,10 +209,10 @@ def main():
             if alerts == 0:
                 print(f"[{datetime.now().isoformat(timespec='seconds')}] Sin novedades.")
 
-        except Exception as e:
+    except Exception as e:
             print(f"[ERROR] {e}")
 
-        time.sleep(POLL_SECONDS)
+#        time.sleep(POLL_SECONDS)
 
 
 if __name__ == "__main__":
