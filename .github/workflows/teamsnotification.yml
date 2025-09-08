@@ -26,7 +26,6 @@ jobs:
 
       - name: Ejecutar script
         env:
-          JIRA_USER: ${{ secrets.JIRA_USER }}
           JIRA_TOKEN: ${{ secrets.JIRA_TOKEN }}
           JIRA_URL: ${{ secrets.JIRA_URL }}
           TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
