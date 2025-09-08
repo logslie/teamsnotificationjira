@@ -3,7 +3,7 @@ import time
 import json
 from datetime import datetime
 import requests
-#import winsound
+
 
 
 API_TOKEN = os.environ["JIRA_TOKEN"]
@@ -11,7 +11,6 @@ JIRA_URL = os.environ["JIRA_URL"]
 TEAMS_WEBHOOK_URL = os.environ["TEAMS_WEBHOOK_URL"]
 FILTER_ID = os.environ["FILTER_ID"]
 
-# Variables para los login
 POLL_SECONDS = 60
 
 # Campos para la búsqueda
@@ -76,32 +75,56 @@ def format_issue(issue, reason: str):
 
     url = f"{JIRA_URL}/browse/{key}"
 
-    # Tarjeta para Teams (de momento no se va a usar, desconozco si funciona correctamente o no)
     card = {
-        "@type": "MessageCard",
-        "@context": "http://schema.org/extensions",
-        "summary": f"Jira: {reason}",
-        "themeColor": "D13438" if priority in ("Highest", "High") else "0078D4",
-        "title": f"[{priority}] {key} — {summary}",
-        "sections": [
+        "type": "message",
+        "attachments": [
             {
-                "activityTitle": f"Motivo: {reason}",
-                "facts": [
-                    {"name": "Estado", "value": status},
-                    {"name": "Asignado", "value": assignee},
-                    {"name": "Grupo", "value": assignee_group},
-                    {"name": "Reporter", "value": reporter},
-                    {"name": "Priority", "value": priority},
-                    {"name": "Updated", "value": updated},
-                ],
-                "text": summary
-            }
-        ],
-        "potentialAction": [
-            {
-                "@type": "OpenUri",
-                "name": "Abrir en Jira",
-                "targets": [{"os": "default", "uri": url}]
+                "contentType": "application/vnd.microsoft.card.adaptive",
+                "content": {
+                    "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+                    "type": "AdaptiveCard",
+                    "version": "1.4",
+                    "body": [
+                        {
+                            "type": "TextBlock",
+                            "text": f"[{priority}] {key} — {summary}",
+                            "weight": "Bolder",
+                            "size": "Medium",
+                            "color": "Attention" if priority in ("Highest", "High") else "Default",
+                            "wrap": True
+                        },
+                        {
+                            "type": "TextBlock",
+                            "text": f"Motivo: {reason}",
+                            "wrap": True,
+                            "spacing": "Small"
+                        },
+                        {
+                            "type": "FactSet",
+                            "facts": [
+                                {"title": "Estado", "value": status},
+                                {"title": "Asignado", "value": assignee},
+                                {"title": "Grupo", "value": assignee_group},
+                                {"title": "Reporter", "value": reporter},
+                                {"title": "Prioridad", "value": priority},
+                                {"title": "Updated", "value": updated}
+                            ]
+                        },
+                        {
+                            "type": "TextBlock",
+                            "text": summary,
+                            "wrap": True,
+                            "spacing": "Medium"
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "type": "Action.OpenUrl",
+                            "title": "🔗 Abrir en Jira",
+                            "url": url
+                        }
+                    ]
+                }
             }
         ]
     }
@@ -122,11 +145,11 @@ def format_issue(issue, reason: str):
 
 def send_to_teams(card: dict):
     headers = {'Content-Type': 'application/json'}
-    r = requests.post(TEAMS_WEBHOOK_URL, headers=headers, data=json.dumps(card), timeout=TIMEOUT)
+    #r = requests.post(TEAMS_WEBHOOK_URL, headers=headers, data=json.dumps(card), timeout=TIMEOUT)
+    r = requests.post(TEAMS_WEBHOOK_URL, json=card)
     if r.status_code >= 400:
         print(f"[Teams HTTP {r.status_code}] {r.text}")
     r.raise_for_status()
-
 
 
 
@@ -134,7 +157,7 @@ def main():
     print(f"[{datetime.now().isoformat(timespec='seconds')}] Monitor Jira (Highest/High/Medium/Low) cada {POLL_SECONDS}s")
     # Guarda por issue: { key: {"updated": str, "priority": str, "last_comment": str} }
     seen = {}
-    
+
     try:
         start_at = 0
         total = 1
@@ -177,26 +200,32 @@ def main():
                             print(f"[WARN] No se pudo consultar comentarios de {key}: {ce}")
                             last_comment_updated = prev.get('last_comment', '')
                             
-                            if (last_comment_updated or '') != (prev.get('last_comment') or ''):
-                                reason = "nuevo comentario"
-                            else:
-                                reason = "actualizado (otros cambios)"
-
+                        if (last_comment_updated or '') != (prev.get('last_comment') or ''):
+                            reason = "nuevo comentario"
+                        else:
+                            reason = "actualizado (otros cambios)"
+                        
                     # Si hay motivo, alerta y actualiza estado
                 if reason:
                     # Prepara card/texto
                     card, plain = format_issue(issue, reason)
                     
-                    try:
-                        send_to_teams(card)
-                        print(f"[{datetime.now().isoformat(timespec='seconds')}] Aviso Teams: {key} — {reason}")
-                    except Exception as te:
-                        print(f"[ERROR] Envío a Teams falló ({key}): {te}")
-                        local_alarm(plain)
+                    if TEAMS_WEBHOOK_URL:
+                        try:
+                            print(card)
+                            send_to_teams(card)
+                            print(f"[{datetime.now().isoformat(timespec='seconds')}] Aviso Teams: {key} — {reason}")
+                        except Exception as te:
+                            print(f"[ERROR] Envío a Teams falló ({key}): {te}")
+                            print(plain)
+                    else:
+                        #local_alarm(plain)
+                        print(plain, flush=True)
+                        print("alerta")
                         
-                        alerts += 1
+                    alerts += 1
                         
-                        # Actualiza el registro de estado (incluso si no hubo motivo esta vez)
+                # Actualiza el registro de estado (incluso si no hubo motivo esta vez)
                 if last_comment_updated is None:
                     # Si no lo obtuvo, conserva el anterior
                     last_comment_updated = (prev or {}).get('last_comment', '')
@@ -205,14 +234,12 @@ def main():
                         "priority": priority,
                         "last_comment": last_comment_updated
                     }
-
+                    
             if alerts == 0:
                 print(f"[{datetime.now().isoformat(timespec='seconds')}] Sin novedades.")
 
-    except Exception as e:
+        except Exception as e:
             print(f"[ERROR] {e}")
-
-#        time.sleep(POLL_SECONDS)
 
 
 if __name__ == "__main__":
