@@ -238,8 +238,8 @@ def main():
             if alerts == 0:
                 print(f"[{datetime.now().isoformat(timespec='seconds')}] Sin novedades.")
 
-        except Exception as e:
-            print(f"[ERROR] {e}")
+    except Exception as e:
+        print(f"[ERROR] {e}")
 
 
 if __name__ == "__main__":
