@@ -10,14 +10,19 @@ API_TOKEN = os.environ["JIRA_TOKEN"]
 JIRA_URL = os.environ["JIRA_URL"]
 TEAMS_WEBHOOK_URL = os.environ["TEAMS_WEBHOOK_URL"]
 FILTER_ID = os.environ["FILTER_ID"]
+FILTER_UNASSIGNED = os.environ["FILTER_UNASSIGNED"]
 
-
+#API_TOKEN = os.getenv('JIRA_API_TOKEN', 'NTQyMDg1MDA4MDc0Oo9yZQnLMYOLtZJZsjGBME2/hbOx')
+#JIRA_URL = 'https://jiranext.masorange.es'
+#TEAMS_WEBHOOK_URL = os.getenv('TEAMS_WEBHOOK_URL', 'https://webhookbot.c-toss.com/api/bot/webhooks/a75805d9-61c0-4bd8-b355-734bab676ded')  #  webhook de Teams (no tengo acceso)
+#FILTER_ID = '75694'
+#FILTER_UNASSIGNED = '75449'
 
 
 POLL_SECONDS = 60
 
-# Campos para la búsqueda
-FIELDS = ["summary", "priority", "updated", "assignee", "reporter", "status", "customfield_10724"]
+ #Campos para la búsqueda
+FIELDS = ["summary", "priority", "updated", "grupo", "assignee", "reporter", "status", "customfield_10724"]
 
 
 
@@ -33,22 +38,8 @@ TIMEOUT = 15
 STATE_FILE = "state.json"
 
 # Leer estado previo
-if os.path.exists(STATE_FILE):
-    with open(STATE_FILE, "r") as f:
-        state = json.load(f)
-else:
-    state = {"last_processed": None}  # inicial
-
-last_processed = state.get("last_processed")
-basejql= f'filter = {FILTER_ID} AND priority in (Highest, High, Medium, Low)'
-if last_processed:
-    # parsear el string de Jira
-    dt = datetime.strptime(last_processed, "%Y-%m-%dT%H:%M:%S.%f%z")
-    # formatear en el formato válido para JQL
-    jql_date = dt.strftime("%Y-%m-%d %H:%M")
-    JQL = f'{basejql} AND created >= "{jql_date}" ORDER BY created ASC'
-else:
-    JQL = f'{basejql} ORDER BY created ASC'
+# Prioridades a vigilar (De momento pongo todas)
+JQL = f'filter = {FILTER_ID} AND priority in (Highest, High, Medium, Low)' 
 # Prioridades a vigilar (De momento pongo todas)
 
 print(JQL)
@@ -180,17 +171,29 @@ def send_to_teams(card: dict):
         print(f"[Teams HTTP {r.status_code}] {r.text}")
     r.raise_for_status()
 
+def load_state(path=STATE_FILE):
+    if not os.path.exists(path):
+        return {"seen": {}}
+    try:
+        with open(path, "r") as f:
+            content = f.read().strip()
+            if not content:
+                return {"seen": {}}
+            return json.loads(content)
+    except json.JSONDecodeError:
+        print("⚠️ state.json vacío o corrupto, se reinicia")
+        return {"seen": {}}
+
 
 
 def main():
     print(f"[{datetime.now().isoformat(timespec='seconds')}] Monitor Jira (Highest/High/Medium/Low) cada {POLL_SECONDS}s")
     # Guarda por issue: { key: {"updated": str, "priority": str, "last_comment": str} }
-    seen = {}
+    state = load_state()
+    seen = state.get("seen", {})
 
     try:
         start_at = 0
-
-
         total = 1
         alerts = 0
         
@@ -210,10 +213,12 @@ def main():
                 fields = issue.get('fields', {})
                 updated = fields.get('updated') or ''
                 priority = (fields.get('priority') or {}).get('name') or ''
+               
+                last_comment_updated = None
+                reason = None
+
                 prev = seen.get(key)
                 
-                reason = None
-                last_comment_updated = None
                 
                 if prev is None:
                     # Nuevo issue 
@@ -265,11 +270,15 @@ def main():
                 if last_comment_updated is None:
                     # Si no lo obtuvo, conserva el anterior
                     last_comment_updated = (prev or {}).get('last_comment', '')
-                    seen[key] = {
-                        "updated": updated,
-                        "priority": priority,
-                        "last_comment": last_comment_updated
-                    }
+
+                seen[key] = {
+                    "updated": updated,
+                    "priority": priority,
+                    "last_comment": last_comment_updated
+                }
+                state["seen"] = seen
+                with open(STATE_FILE, "w") as f:
+                    json.dump(state, f, indent=2)
               
             if alerts == 0:
                 print(f"[{datetime.now().isoformat(timespec='seconds')}] Sin novedades.")

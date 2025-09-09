@@ -38,6 +38,7 @@ jobs:
           JIRA_URL: ${{ secrets.JIRA_URL }}
           TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
           FILTER_ID:  ${{ secrets.FILTER_ID }}
+          FILTER_UNASSIGNED:  ${{ secrets.FILTER_UNASSIGNED }}
         run: python script.py
 
       - name: Save state.json cache
