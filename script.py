@@ -12,11 +12,7 @@ TEAMS_WEBHOOK_URL = os.environ["TEAMS_WEBHOOK_URL"]
 FILTER_ID = os.environ["FILTER_ID"]
 FILTER_UNASSIGNED = os.environ["FILTER_UNASSIGNED"]
 
-#API_TOKEN = os.getenv('JIRA_API_TOKEN', 'NTQyMDg1MDA4MDc0Oo9yZQnLMYOLtZJZsjGBME2/hbOx')
-#JIRA_URL = 'https://jiranext.masorange.es'
-#TEAMS_WEBHOOK_URL = os.getenv('TEAMS_WEBHOOK_URL', 'https://webhookbot.c-toss.com/api/bot/webhooks/a75805d9-61c0-4bd8-b355-734bab676ded')  #  webhook de Teams (no tengo acceso)
-#FILTER_ID = '75694'
-#FILTER_UNASSIGNED = '75449'
+
 
 
 POLL_SECONDS = 60
