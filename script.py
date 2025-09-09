@@ -11,13 +11,15 @@ JIRA_URL = os.environ["JIRA_URL"]
 TEAMS_WEBHOOK_URL = os.environ["TEAMS_WEBHOOK_URL"]
 FILTER_ID = os.environ["FILTER_ID"]
 
+
+
+
 POLL_SECONDS = 60
 
 # Campos para la búsqueda
 FIELDS = ["summary", "priority", "updated", "assignee", "reporter", "status", "customfield_10724"]
 
-# Prioridades a vigilar (De momento pongo todas)
-JQL = f'filter = {FILTER_ID} AND priority in (Highest, High, Medium, Low)'
+
 
 # Recomendación de ChatGPT: Endpoint de búsqueda (cambia a /api/3 si tu Jira lo exige)
 API_ENDPOINT = f'{JIRA_URL}/rest/api/2/search'
@@ -25,6 +27,32 @@ ISSUE_ENDPOINT = f'{JIRA_URL}/rest/api/2/issue'  # /{key}?fields=comment
 
 MAX_RETRIES = 3
 TIMEOUT = 15
+
+
+# Guarda el estado de la anterior ejecución
+STATE_FILE = "state.json"
+
+# Leer estado previo
+if os.path.exists(STATE_FILE):
+    with open(STATE_FILE, "r") as f:
+        state = json.load(f)
+else:
+    state = {"last_processed": None}  # inicial
+
+last_processed = state.get("last_processed")
+basejql= f'filter = {FILTER_ID} AND priority in (Highest, High, Medium, Low)'
+if last_processed:
+    # parsear el string de Jira
+    dt = datetime.strptime(last_processed, "%Y-%m-%dT%H:%M:%S.%f%z")
+    # formatear en el formato válido para JQL
+    jql_date = dt.strftime("%Y-%m-%d %H:%M")
+    JQL = f'{basejql} AND created >= "{jql_date}" ORDER BY created ASC'
+else:
+    JQL = f'{basejql} ORDER BY created ASC'
+# Prioridades a vigilar (De momento pongo todas)
+
+print(JQL)
+
 
 
 def jira_get(url, params=None):
@@ -43,6 +71,7 @@ def jira_get(url, params=None):
 
 
 def jira_search(start_at=0, max_results=100):
+    
     params = {
         'jql': JQL,
         'fields': ','.join(FIELDS),
@@ -160,6 +189,8 @@ def main():
 
     try:
         start_at = 0
+
+
         total = 1
         alerts = 0
         
@@ -168,7 +199,12 @@ def main():
             total = data.get('total', 0)
             issues = data.get('issues', [])
             start_at += len(issues)
-            print("Number of issues is:"+len(issues))
+            print("Number of issues is:"+str(len(issues)))
+            if issues:
+                state["last_processed"] = issues[-1]["fields"]["updated"]
+                with open(STATE_FILE, "w") as f:
+                    json.dump(state, f)   
+                
             for issue in issues:
                 key = issue.get('key', 'N/A')
                 fields = issue.get('fields', {})
@@ -187,7 +223,7 @@ def main():
                     except Exception as ce:
                         print(f"[WARN] No se pudo consultar comentarios de {key}: {ce}")
                         last_comment_updated = ''
-                        reason = "nuevo"
+                    reason = "nuevo"
                 else:
                     # ¿Cambió la prioridad?
                     if prev.get('priority') != priority:
@@ -209,7 +245,7 @@ def main():
                 if reason:
                     # Prepara card/texto
                     card, plain = format_issue(issue, reason)
-                    
+                    alerts += 1
                     if TEAMS_WEBHOOK_URL:
                         try:
                             print(card)
@@ -223,7 +259,7 @@ def main():
                         print(plain, flush=True)
                         print("alerta")
                         
-                    alerts += 1
+                   
                         
                 # Actualiza el registro de estado (incluso si no hubo motivo esta vez)
                 if last_comment_updated is None:
@@ -234,7 +270,7 @@ def main():
                         "priority": priority,
                         "last_comment": last_comment_updated
                     }
-                    
+              
             if alerts == 0:
                 print(f"[{datetime.now().isoformat(timespec='seconds')}] Sin novedades.")
 
