@@ -285,6 +285,7 @@ def main():
                 }
                 print(f"show seen[{key} after update the information]:{seen[key]}")
                 state["seen"] = seen
+                print(f"state final {state}")
                 with open(STATE_FILE, "w") as f:
                     json.dump(state, f, indent=2)
               
