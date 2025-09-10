@@ -238,7 +238,7 @@ def main():
                     # ¿Cambió la prioridad?
                     if prev.get('priority') != priority:
                         reason = f"cambio de prioridad ({prev.get('priority')} → {priority})"
-                        # ¿Cambió el 'updated'? si es así distinguimos comentario vs otros cambios
+                     # ¿Cambió el 'updated'? si es así distinguimos comentario vs otros cambios
                     elif prev.get('updated') != updated:
                         try:
                             last_comment_updated = get_last_comment_updated(key)
@@ -277,11 +277,13 @@ def main():
                     # Si no lo obtuvo, conserva el anterior
                     last_comment_updated = (prev or {}).get('last_comment', '')
 
+                print(f"show seen[{key} before update the information]:{seen[key]}")
                 seen[key] = {
                     "updated": updated,
                     "priority": priority,
                     "last_comment": last_comment_updated
                 }
+                print(f"show seen[{key} after update the information]:{seen[key]}")
                 state["seen"] = seen
                 with open(STATE_FILE, "w") as f:
                     json.dump(state, f, indent=2)
