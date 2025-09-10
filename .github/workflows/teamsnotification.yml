@@ -46,6 +46,16 @@ jobs:
         with:
           path: state.json
           key: jira-state-cache-${{ github.repository }}-${{ github.ref }}
+     
+      - name: Show state.json content
+        run: |
+          if [ -f state.json ]; then
+            echo "📂 state.json encontrado:"
+            cat state.json
+          else
+            echo "⚠️ state.json no existe en la cache"
+          fi
+
     
 
 
