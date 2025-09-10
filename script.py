@@ -3,8 +3,10 @@ import time
 import json
 from datetime import datetime
 import requests
+from dotenv import load_dotenv
 
-
+# Cargar variables desde .env
+load_dotenv()
 
 API_TOKEN = os.environ["JIRA_TOKEN"]
 JIRA_URL = os.environ["JIRA_URL"]
@@ -35,7 +37,9 @@ STATE_FILE = "state.json"
 
 # Leer estado previo
 # Prioridades a vigilar (De momento pongo todas)
-JQL = f'filter = {FILTER_ID} AND priority in (Highest, High, Medium, Low)' 
+JQL = f'filter = {FILTER_ID} AND priority in (Highest, High, Medium, Low)'
+#JQL = f'filter = {FILTER_ID} AND priority in (Highest, High, Medium, Low) OR (filter = {FILTER_UNASSIGNED} AND priority in (Highest, High, Medium, Low) AND cf[10724] IS EMPTY)' 
+#JQL = f'filter = {FILTER_UNASSIGNED} AND priority in (Highest, High, Medium, Low) AND cf[10724] IS EMPTY' 
 # Prioridades a vigilar (De momento pongo todas)
 
 print(JQL)
@@ -58,14 +62,15 @@ def jira_get(url, params=None):
 
 
 def jira_search(start_at=0, max_results=100):
-    
+   
     params = {
         'jql': JQL,
         'fields': ','.join(FIELDS),
         'startAt': start_at,
         'maxResults': max_results
     }
-    return jira_get(API_ENDPOINT, params=params)
+    
+    return jira_get(API_ENDPOINT,params=params)
 
 
 def get_last_comment_updated(issue_key: str) -> str:
@@ -180,6 +185,9 @@ def load_state(path=STATE_FILE):
         print("⚠️ state.json vacío o corrupto, se reinicia")
         return {"seen": {}}
 
+def printCache(seen):
+    for key, value in seen.items():
+        print(f"{key}: {value}")
 
 
 def main():
@@ -187,7 +195,7 @@ def main():
     # Guarda por issue: { key: {"updated": str, "priority": str, "last_comment": str} }
     state = load_state()
     seen = state.get("seen", {})
-
+    printCache(seen)
     try:
         start_at = 0
         total = 1
