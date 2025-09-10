@@ -220,15 +220,16 @@ def main():
                
                 last_comment_updated = None
                 reason = None
-
+                print(f"Print updated value from the issue with key {key}: {updated}")
                 prev = seen.get(key)
-                
+                print(f"Print prev object: {prev}")
                 
                 if prev is None:
                     # Nuevo issue 
                     # Miramos si tiene comentarios 
                     try:
                         last_comment_updated = get_last_comment_updated(key)
+                        print(f"IN prev is NONE: last comment updated for key {key}:{last_comment_updated}")
                     except Exception as ce:
                         print(f"[WARN] No se pudo consultar comentarios de {key}: {ce}")
                         last_comment_updated = ''
@@ -241,11 +242,12 @@ def main():
                     elif prev.get('updated') != updated:
                         try:
                             last_comment_updated = get_last_comment_updated(key)
+                            print(f"IN prev EXIST: last comment updated for key {key}:{last_comment_updated}")
                         except Exception as ce:
                             print(f"[WARN] No se pudo consultar comentarios de {key}: {ce}")
                             last_comment_updated = prev.get('last_comment', '')
                             
-                        if (last_comment_updated or '') != (prev.get('last_comment') or ''):
+                        if (last_comment_updated) != (prev.get('last_comment')):
                             reason = "nuevo comentario"
                         else:
                             reason = "actualizado (otros cambios)"
@@ -269,7 +271,7 @@ def main():
                         print("alerta")
                         
                    
-                        
+                print(f"last check of last comment updated {last_comment_updated} and updated value {updated}")      
                 # Actualiza el registro de estado (incluso si no hubo motivo esta vez)
                 if last_comment_updated is None:
                     # Si no lo obtuvo, conserva el anterior
