@@ -277,7 +277,8 @@ def main():
                     # Si no lo obtuvo, conserva el anterior
                     last_comment_updated = (prev or {}).get('last_comment', '')
 
-                print(f"show seen[{key} before update the information]:{seen[key]}")
+               
+               
                 seen[key] = {
                     "updated": updated,
                     "priority": priority,
@@ -288,7 +289,8 @@ def main():
                 print(f"state final {state}")
                 with open(STATE_FILE, "w") as f:
                     json.dump(state, f, indent=2)
-              
+                
+            
             if alerts == 0:
                 print(f"[{datetime.now().isoformat(timespec='seconds')}] Sin novedades.")
 
